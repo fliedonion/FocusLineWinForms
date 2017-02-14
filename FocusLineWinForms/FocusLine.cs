@@ -8,8 +8,16 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace FocusLineWinForms {
-    public class FocusLine {
+namespace FocusLineWinForms
+{
+
+    public interface IFocusLine
+    {
+        void DrawFocusLine(IntPtr hWnd, Point startPoint, Point endPoint);
+    }
+
+    public class FocusLine : IFocusLine
+    {
 
         #region Native For DrawFocusLine
         [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Auto, SetLastError = true)]
@@ -40,14 +48,17 @@ namespace FocusLineWinForms {
         private static extern bool MoveToEx(HandleRef hdc, int x, int y, POINT pt);
 
         [StructLayout(LayoutKind.Sequential)]
-        public class POINT {
+        public class POINT
+        {
             public int x;
             public int y;
 
-            public POINT() {
+            public POINT()
+            {
             }
 
-            public POINT(int x, int y) {
+            public POINT(int x, int y)
+            {
                 this.x = x;
                 this.y = y;
             }
@@ -57,8 +68,10 @@ namespace FocusLineWinForms {
         ///     This makes a choice from a set of raster op codes, based on the color given.  If the
         ///     color is considered to be "dark", the raster op provided by dark will be returned.
         /// </devdoc>
-        private static int GetColorRop(Color color, int darkROP, int lightROP) {
-            if (color.GetBrightness() < .5) {
+        private static int GetColorRop(Color color, int darkROP, int lightROP)
+        {
+            if (color.GetBrightness() < .5)
+            {
                 return darkROP;
             }
             return lightROP;
@@ -71,15 +84,17 @@ namespace FocusLineWinForms {
         private Point lastReversibleLineEnd = new Point(-1, -1);
 
 
-        public void DrawFocusLine(IntPtr hWnd, Point p, Point endPoint) {
-            DrawReversibleLine(hWnd, p, endPoint, Color.Black);
+        public void DrawFocusLine(IntPtr hWnd, Point startPoint, Point endPoint)
+        {
+            DrawReversibleLine(hWnd, startPoint, endPoint, Color.Black);
 
-            lastReversibleLineStart = p;
+            lastReversibleLineStart = startPoint;
             lastReversibleLineEnd = endPoint;
         }
 
 
-        private void DrawReversibleLine(IntPtr hWnd, Point start, Point end, Color backColor) {
+        private void DrawReversibleLine(IntPtr hWnd, Point start, Point end, Color backColor)
+        {
 
             const int PS_SOLID = 0, PS_DOT = 2, BS_SOLID = 0, HOLLOW_BRUSH = 5;
 
@@ -101,8 +116,61 @@ namespace FocusLineWinForms {
             DeleteObject(new HandleRef(null, pen));
             ReleaseDC(new HandleRef(null, IntPtr.Zero), new HandleRef(null, dc));
         }
+    }
 
 
+    public class FocusRect : IFocusLine
+    {
+
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern bool DrawFocusRect(IntPtr hDC, ref RECT lprc);
+
+        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Auto, SetLastError = true)]
+        internal static extern int ReleaseDC(HandleRef hWnd, HandleRef hDC);
+
+        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Auto, SetLastError = true)]
+        internal static extern IntPtr GetDC(HandleRef hWnd);
+
+
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            int LEFT;
+            int TOP;
+            int RIGHT;
+            int BOTTOM;
+
+            public RECT(int left, int top, int right, int bottom)
+            {
+                LEFT = left;
+                TOP = top;
+                RIGHT = right;
+                BOTTOM = bottom;
+            }
+        }
+
+
+        public void DrawFocusLine(IntPtr hwnd, Point startPoint, Point endPoint)
+        {
+
+            var rect = new RECT(
+                startPoint.X < endPoint.X ? startPoint.X : endPoint.X,
+                startPoint.Y < endPoint.Y ? startPoint.Y : endPoint.Y,
+                startPoint.X >= endPoint.X ? startPoint.X : endPoint.X,
+                startPoint.Y >= endPoint.Y ? startPoint.Y : endPoint.Y
+                );
+
+            DrawReversibleRect(hwnd, ref rect);
+        }
+
+        private void DrawReversibleRect(IntPtr hWnd, ref RECT rect) { 
+
+            IntPtr dc = GetDC(new HandleRef(null, hWnd));
+            DrawFocusRect(dc, ref rect);
+            ReleaseDC(new HandleRef(null, IntPtr.Zero), new HandleRef(null, dc));
+        }
 
 
     }

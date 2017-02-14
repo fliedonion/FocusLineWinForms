@@ -15,7 +15,7 @@ namespace FocusLineWinForms {
         private Point lastPoint = Point.Empty;
         private bool isDragging = false;
 
-        private FocusLine focusLine = new FocusLine();
+        private IFocusLine focusLine = new FocusLine();
         public Form1() {
             InitializeComponent();
 
@@ -59,6 +59,19 @@ namespace FocusLineWinForms {
                 lastPoint = e.Location;
                 isDragging = true;
             }
+        }
+
+        private void focusLineRadio_CheckedChanged(object sender, EventArgs e)
+        {
+            if (focusLineRadio.Checked)
+                focusLine = new FocusLine();
+        }
+
+        private void focusRectRadio_CheckedChanged(object sender, EventArgs e)
+        {
+            if(focusRectRadio.Checked)
+                focusLine = new FocusRect();
+
         }
     }
 }
